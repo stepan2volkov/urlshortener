@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -25,6 +26,14 @@ func NewRouter(app *app.App) *Router {
 
 	// Not the part of main API and can be removed after creating front-end
 	r.Get("/", rt.GetMainPage)
+	r.Get("/openapi", rt.GetOpenAPI)
+	fileServer := http.FileServer(http.Dir("./web/static"))
+	r.Get("/static/{filename}", func(w http.ResponseWriter, r *http.Request) {
+		log.Println(r.RequestURI)
+		http.StripPrefix("/static", fileServer).ServeHTTP(w, r)
+	})
+
+	// Main API
 	r.Mount("/", openapi.Handler(rt))
 
 	swagger, err := openapi.GetSwagger()
@@ -61,6 +70,14 @@ func (rt *Router) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
+
+	_, err := url.ParseRequestURI(requestURL.OriginalURL)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "url is invalid", http.StatusBadRequest)
+		return
+	}
+
 	url, err := rt.app.CreateURL(r.Context(), requestURL.OriginalURL)
 	if err != nil {
 		log.Println(err)
@@ -73,6 +90,7 @@ func (rt *Router) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 		StatsURL: "stats/" + url.ShortURL,
 	}
 	w.WriteHeader(http.StatusCreated)
+	w.Header().Add("Content-type", "application/json")
 	_ = json.NewEncoder(w).Encode(responseURL)
 }
 
@@ -97,11 +115,27 @@ func (rt *Router) GetStats(w http.ResponseWriter, r *http.Request, shortURL stri
 		ShortURL:     stats.ShortURL,
 		NumRedirects: stats.NumRedirects,
 	}
+	w.Header().Add("Content-type", "application/json")
 	_ = json.NewEncoder(w).Encode(response)
 }
 
 func (rt *Router) GetMainPage(w http.ResponseWriter, r *http.Request) {
 	ts, err := template.ParseFiles("./web/templates/index.html")
+	if err != nil {
+		log.Println(err.Error())
+		http.Error(w, "Internal Server Error", 500)
+		return
+	}
+
+	if err != ts.Execute(w, nil) {
+		log.Println(err.Error())
+		http.Error(w, "Internal Server Error", 500)
+		return
+	}
+}
+
+func (rt *Router) GetOpenAPI(w http.ResponseWriter, r *http.Request) {
+	ts, err := template.ParseFiles("./web/templates/openapi.html")
 	if err != nil {
 		log.Println(err.Error())
 		http.Error(w, "Internal Server Error", 500)

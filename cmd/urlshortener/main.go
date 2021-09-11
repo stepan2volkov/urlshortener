@@ -27,6 +27,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("error parsing config: %v\n", err)
 	}
+	log.Printf("Config: %+v\n", conf)
 
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt)
 
