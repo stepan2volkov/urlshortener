@@ -89,8 +89,8 @@ func (rt *Router) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 		ShortURL: url.ShortURL,
 		StatsURL: "stats/" + url.ShortURL,
 	}
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Add("Content-type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(responseURL)
 }
 
