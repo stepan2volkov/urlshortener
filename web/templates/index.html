@@ -24,11 +24,11 @@
 
         const sendPostRequest = async (req) => {
             try {
-                const resp = await axios.post('http://localhost:8000/', req);
+                const resp = await axios.post('https://gb-urlshortener.herokuapp.com/', req);
                 console.log(resp.data);
-                shortURL.setAttribute("href", "http://localhost:8000/" + resp.data.shortURL);
+                shortURL.setAttribute("href", "https://gb-urlshortener.herokuapp.com/" + resp.data.shortURL);
                 shortURL.textContent = "Short URL";
-                statsURL.setAttribute("href", "http://localhost:8000/" + resp.data.statsURL);
+                statsURL.setAttribute("href", "https://gb-urlshortener.herokuapp.com/" + resp.data.statsURL);
                 statsURL.textContent = "Stats URL";
             } catch (err) {
                 console.error(err);
