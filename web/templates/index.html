@@ -3,19 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <title>URL Shortener</title>
+    <style>
+        * {
+            padding: 0;
+        }
+        body {
+            background: #e2fbfd;
+            font-family: lato,arial,helvetica neue,sans-serif;
+            font-weight: 400;
+            font-size: 18px;
+            padding-top: 120px;
+        }
+        label {
+            font-weight: 700;
+        }
+        .wrapper {
+            background: #fff;
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+        .align-right {
+            text-align: right;
+        }
+        #generate:hover {
+            background: #eb6f00;
+        }
+        #generate {
+            cursor: pointer;
+            margin-top: 32px;
+            display: block;
+            outline: none;
+            border: none;
+            background: #ff8300;
+            color: #fff;
+            text-transform: uppercase;
+            line-height: 50px;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 700;
+        }
+        input {
+            outline: none;
+            margin: 0;
+            border: none;
+            border-bottom: 2px solid #ccc;
+            box-shadow: none;
+            width: 90%;
+            color: #666;
+            padding: 15px 0;
+            font-size: 18px;
+            font-weight: 700;
+
+        }
+        a {
+            text-decoration: none;
+            color: #999;
+        }
+        h1 {
+            color: #ff8300;
+            font-size: 30px;
+            text-align: center;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
     <div>
+        
+    </div>
+    <div class="wrapper">
+        <h1>URL Shortener</h1>
+        <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Praesentium assumenda nobis, soluta totam ab corporis, aliquam quisquam quam minus amet consequuntur corrupti dignissimos, voluptatem eaque! Dolorem nisi deleniti nemo ab.</p>
+        <label for="original-url">URL:</label>
+        <input id="original-url" type="text">
+        <button id="generate">Generate</button>
+
+        <a class="hidden" id="short-url">Short URL</a><br>
+        <a class="hidden" id="stats-url">Stats URL</a>
+    </div>
+    <div class="wrapper align-right">
         <a href="https://gb-urlshortener.herokuapp.com/openapi">OpenAPI</a>
     </div>
-    <div>
-        <label for="original-url">Paste the URL:</label>
-        <input id="original-url" type="text">
-        <input id="generate" type="submit" value="Generate">
-    </div>
 
-    <a id="short-url"></a><br>
-    <a id="stats-url"></a>
 
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
@@ -29,10 +101,14 @@
             try {
                 const resp = await axios.post('https://gb-urlshortener.herokuapp.com/', req);
                 console.log(resp.data);
+
                 shortURL.setAttribute("href", "https://gb-urlshortener.herokuapp.com/" + resp.data.shortURL);
-                shortURL.textContent = "Short URL";
                 statsURL.setAttribute("href", "https://gb-urlshortener.herokuapp.com/" + resp.data.statsURL);
+                shortURL.textContent = "Short URL";
                 statsURL.textContent = "Stats URL";
+
+                shortURL.classList.remove("hidden");
+                statsURL.classList.remove("hidden");
             } catch (err) {
                 console.error(err);
             }
