@@ -35,14 +35,30 @@ func NewPgStore(dsn string) (*PgStore, error) {
 		return nil, err
 	}
 
-	err = db.Ping()
-	if err != nil {
+	if err = db.Ping(); err != nil {
 		db.Close()
 		return nil, err
 	}
-	return &PgStore{
-		db: db,
-	}, nil
+	ps := &PgStore{db: db}
+	if err = ps.migrate(); err != nil {
+		return nil, err
+	}
+	return ps, nil
+}
+
+func (s *PgStore) migrate() error {
+	_, err := s.db.Exec(`CREATE TABLE IF NOT EXISTS urls (
+		id            bigint primary key,
+		created_at    timestamp with time zone,
+		original_url  varchar,
+		short_url     varchar,
+		num_redirects bigint default 0
+	);`)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS urls_short_url_uindex ON urls (short_url);`)
+	return err
 }
 
 func (s *PgStore) Close() error {
