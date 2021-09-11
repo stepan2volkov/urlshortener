@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>URL Shortener</title>
+</head>
+<body>
+    <div>
+        <label for="original-url">Paste the URL:</label>
+        <input id="original-url" type="text">
+        <input id="generate" type="submit" value="Generate">
+    </div>
+
+    <a id="short-url"></a><br>
+    <a id="stats-url"></a>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        "use strict";
+        let generateBtn = document.getElementById("generate");
+        let originalURL = document.getElementById("original-url");
+        let shortURL = document.getElementById("short-url");
+        let statsURL = document.getElementById("stats-url");
+
+        const sendPostRequest = async (req) => {
+            try {
+                const resp = await axios.post('http://localhost:8000/', req);
+                console.log(resp.data);
+                shortURL.setAttribute("href", "http://localhost:8000/" + resp.data.shortURL);
+                shortURL.textContent = "Short URL";
+                statsURL.setAttribute("href", "http://localhost:8000/" + resp.data.statsURL);
+                statsURL.textContent = "Stats URL";
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        generateBtn.onclick = function() {
+            const request = {
+                originalURL: originalURL.value
+            };
+            sendPostRequest(request);
+        };
+    </script>
+</body>
+</html>

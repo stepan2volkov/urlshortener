@@ -1,0 +1,112 @@
+openapi: "3.0.1"
+info:
+  title: URL Shortener API
+  description: This is the final project for GeekBrains course "Backend Development with Go. Level 1"
+  version: 1.0.0
+  contact:
+    email: stepan2volkov@yandex.ru
+
+tags:
+- name: Short URL
+  description: Creating and getting short URL
+- name: Stats
+  description: Getting stats about redirects
+
+paths:
+  /:
+    post:
+      summary: Create short URL from original URL
+      tags: 
+        - Short URL
+      operationId: CreateShortURL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: 
+              $ref: "#/components/schemas/RequestURL"
+      responses:
+        201:
+          description: short url created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResponseURL"
+        400:
+          description: bad request
+          content: {}
+        500:
+          description: internal server error
+          content: {}
+  /{short-url}:
+    get:
+      summary: Redirect to original URL by short URL
+      tags: 
+        - Short URL
+      operationId: RedirectURL
+      parameters:
+        - name: short-url
+          in: path
+          description: short URL for redirecting
+          required: true
+          schema:
+            type: string
+      responses:
+        303:
+          description: successful operation
+        400:
+          description: bad request
+        500:
+          description: internal server error
+  /stats/{short-url}:
+    get:
+      summary: Get stats about redirects
+      tags: 
+        - Stats
+      operationId: GetStats
+      parameters:
+        - name: short-url
+          in: path
+          description: short URL for getting redirect stats
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Stats"
+        400:
+          description: bad request
+        500:
+          description: internal server error
+  
+
+components:
+  schemas:
+    RequestURL:
+      type: object
+      properties:
+        originalURL:
+          type: string
+          format: url
+    ResponseURL:
+      type: object
+      properties:
+        shortURL:
+          type: string
+          format: url
+        statsURL: 
+          type: string
+          format: url
+    Stats:
+      type: object
+      properties:
+        shortURL:
+          type: string
+          format: url
+        numRedirects:
+          type: integer
+          format: int64
