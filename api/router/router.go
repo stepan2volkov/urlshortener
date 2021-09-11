@@ -24,9 +24,9 @@ func NewRouter(app *app.App) *Router {
 	rt := &Router{app: app}
 	r.Use(middleware.Logger)
 
-	// Not the part of main API and can be removed after creating front-end
-	r.Get("/", rt.GetMainPage)
-	r.Get("/openapi", rt.GetOpenAPI)
+	// Not the part of main API and can be removed (i.e. after creating frontend)
+	r.Get("/", GetMainPage)
+	r.Get("/openapi", GetOpenAPI)
 	fileServer := http.FileServer(http.Dir("./web/static"))
 	r.Get("/static/{filename}", func(w http.ResponseWriter, r *http.Request) {
 		log.Println(r.RequestURI)
@@ -119,7 +119,7 @@ func (rt *Router) GetStats(w http.ResponseWriter, r *http.Request, shortURL stri
 	_ = json.NewEncoder(w).Encode(response)
 }
 
-func (rt *Router) GetMainPage(w http.ResponseWriter, r *http.Request) {
+func GetMainPage(w http.ResponseWriter, r *http.Request) {
 	ts, err := template.ParseFiles("./web/templates/index.html")
 	if err != nil {
 		log.Println(err.Error())
@@ -134,7 +134,7 @@ func (rt *Router) GetMainPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (rt *Router) GetOpenAPI(w http.ResponseWriter, r *http.Request) {
+func GetOpenAPI(w http.ResponseWriter, r *http.Request) {
 	ts, err := template.ParseFiles("./web/templates/openapi.html")
 	if err != nil {
 		log.Println(err.Error())
