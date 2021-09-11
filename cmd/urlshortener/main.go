@@ -19,7 +19,8 @@ import (
 var configPath string
 
 func main() {
-	log.Println("Build Commit", config.BuildCommit)
+	log.Println("Build Commit:", config.BuildCommit)
+	log.Println("Build Time:", config.BuildTime)
 	flag.StringVar(&configPath, "config", "config.yaml", "path to config")
 	flag.Parse()
 	conf, err := config.GetConfig(configPath)
