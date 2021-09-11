@@ -48,7 +48,7 @@ func NewPgStore(dsn string) (*PgStore, error) {
 
 func (s *PgStore) migrate() error {
 	_, err := s.db.Exec(`CREATE TABLE IF NOT EXISTS urls (
-		id            bigint primary key,
+		id            bigserial primary key,
 		created_at    timestamp with time zone,
 		original_url  varchar,
 		short_url     varchar,
