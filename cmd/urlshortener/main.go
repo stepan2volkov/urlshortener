@@ -19,8 +19,11 @@ import (
 var configPath string
 
 func main() {
+	// Information about current build
 	log.Println("Build Commit:", config.BuildCommit)
 	log.Println("Build Time:", config.BuildTime)
+
+	// Getting configuration
 	flag.StringVar(&configPath, "config", "", "path to config")
 	flag.Parse()
 	conf, err := config.GetConfig(configPath)
@@ -43,11 +46,13 @@ func main() {
 	default:
 		log.Fatalf("unknown store value in config: \"%v\"\n", conf.DSN)
 	}
+
+	// Initialization and running application
 	app := app.NewApp(store)
 	rt := router.NewRouter(app, conf.Host)
 	srv := server.NewServer(conf, rt)
-
 	srv.Start()
+
 	<-ctx.Done()
 	srv.Stop()
 }

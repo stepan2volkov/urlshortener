@@ -13,6 +13,7 @@ type Server struct {
 	srv http.Server
 }
 
+// NewServer creates http.Server with settings from config.Config
 func NewServer(conf config.Config, h http.Handler) *Server {
 	s := &Server{}
 	s.srv = http.Server{

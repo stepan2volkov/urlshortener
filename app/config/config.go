@@ -16,6 +16,8 @@ type Config struct {
 	ReadHeaderTimeout int    `yaml:"read_header_timeout" envconfig:"READ_HEADER_TIMEOUT" default:"30" required:"true"`
 }
 
+// GetConfig gets path to yaml-file. If path is an empty string,
+// configuration will be obtained from environment variables
 func GetConfig(path string) (Config, error) {
 	if path == "" {
 		return getConfigFromEnv()

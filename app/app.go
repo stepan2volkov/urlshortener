@@ -22,6 +22,7 @@ type Stats struct {
 	NumRedirects int
 }
 
+// URLStore is responsible for storing and getting url data.
 type URLStore interface {
 	Create(ctx context.Context, originalURL string) (*URL, error)
 	UpdateURL(ctx context.Context, url *URL) error
@@ -40,6 +41,7 @@ func NewApp(store URLStore) *App {
 	}
 }
 
+// CreateURL generates short URL and saving it in the store.
 func (a *App) CreateURL(ctx context.Context, originalURL string) (*URL, error) {
 	url, err := a.store.Create(ctx, originalURL)
 	if err != nil {
@@ -57,6 +59,7 @@ func (a *App) CreateURL(ctx context.Context, originalURL string) (*URL, error) {
 	return url, nil
 }
 
+// GetRedirectURL searches short URL in the store and returns original URL to redirect
 func (a *App) GetRedirectURL(ctx context.Context, shortURL string) (*URL, error) {
 	url, err := a.store.GetOriginalURL(ctx, shortURL)
 	if err != nil {
@@ -72,6 +75,7 @@ func (a *App) GetRedirectURL(ctx context.Context, shortURL string) (*URL, error)
 	return url, nil
 }
 
+// GetStats searches short URL in the store and returns redirecting stats
 func (a *App) GetStats(ctx context.Context, shortURL string) (*Stats, error) {
 	stats, err := a.store.GetStats(ctx, shortURL)
 	if err != nil {

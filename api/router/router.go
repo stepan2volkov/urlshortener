@@ -20,6 +20,7 @@ type Router struct {
 	host string
 }
 
+// NewRouter creates router
 func NewRouter(app *app.App, host string) *Router {
 	r := chi.NewRouter()
 	rt := &Router{app: app}

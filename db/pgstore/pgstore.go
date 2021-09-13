@@ -29,6 +29,7 @@ type PgStore struct {
 	db *sql.DB
 }
 
+// NewPgStore takes DSN string and trying to ping server.
 func NewPgStore(dsn string) (*PgStore, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -57,7 +58,7 @@ func (s *PgStore) migrate() error {
 	if err != nil {
 		return err
 	}
-	_, err = s.db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS urls_short_url_uindex ON urls (short_url);`)
+	_, err = s.db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS urls_short_url_uidx ON urls (short_url);`)
 	return err
 }
 

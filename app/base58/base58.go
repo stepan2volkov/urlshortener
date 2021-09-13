@@ -15,6 +15,7 @@ func init() {
 	}
 }
 
+// Decode number into base58 string. The number should be positive or zero.
 func Decode(num int) (string, error) {
 	if num < 0 {
 		return "", fmt.Errorf("num shouldn't be negative, got %d", num)
@@ -35,6 +36,7 @@ func Decode(num int) (string, error) {
 	return string(result), nil
 }
 
+// Encode base58 string to number.
 func Encode(str string) (int, error) {
 	result := 0
 	for _, r := range str {
