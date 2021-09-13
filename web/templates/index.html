@@ -85,7 +85,7 @@
         <a class="hidden" id="stats-url">Stats URL</a>
     </div>
     <div class="wrapper align-right">
-        <a href="https://gb-urlshortener.herokuapp.com/openapi">OpenAPI</a>
+        <a href="{{ .Host }}openapi">OpenAPI</a>
     </div>
 
 
@@ -99,11 +99,11 @@
 
         const sendPostRequest = async (req) => {
             try {
-                const resp = await axios.post('https://gb-urlshortener.herokuapp.com/', req);
+                const resp = await axios.post('{{ .Host }}', req);
                 console.log(resp.data);
 
-                shortURL.setAttribute("href", "https://gb-urlshortener.herokuapp.com/" + resp.data.shortURL);
-                statsURL.setAttribute("href", "https://gb-urlshortener.herokuapp.com/" + resp.data.statsURL);
+                shortURL.setAttribute("href", "{{ .Host }}" + resp.data.shortURL);
+                statsURL.setAttribute("href", "{{ .Host }}" + resp.data.statsURL);
                 shortURL.textContent = "Short URL";
                 statsURL.textContent = "Stats URL";
 

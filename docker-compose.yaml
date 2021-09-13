@@ -8,3 +8,20 @@ services:
       POSTGRES_DB: urlshortener
     ports:
       - 5432:5432
+  
+  urlshortener:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    image: stepan2volkov/urlshortener:v1.0.0
+    restart: always
+    environment:
+      PORT: 8000
+      DSN: 'postgres://test:1234@database:5432/urlshortener'
+      READ_TIMEOUT: 30
+      WRITE_TIMEOUT: 30
+      READ_HEADER_TIMEOUT: 30
+    ports:
+      - 8000:8000
+    depends_on:
+      - database

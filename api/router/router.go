@@ -16,17 +16,18 @@ import (
 
 type Router struct {
 	http.Handler
-	app *app.App
+	app  *app.App
+	host string
 }
 
-func NewRouter(app *app.App) *Router {
+func NewRouter(app *app.App, host string) *Router {
 	r := chi.NewRouter()
 	rt := &Router{app: app}
 	r.Use(middleware.Logger)
 
 	// Not the part of main API and can be removed (i.e. after creating frontend)
-	r.Get("/", GetMainPage)
-	r.Get("/openapi", GetOpenAPI)
+	r.Get("/", rt.GetMainPage)
+	r.Get("/openapi", rt.GetOpenAPI)
 	fileServer := http.FileServer(http.Dir("./web/static"))
 	r.Get("/static/{filename}", func(w http.ResponseWriter, r *http.Request) {
 		log.Println(r.RequestURI)
@@ -119,7 +120,7 @@ func (rt *Router) GetStats(w http.ResponseWriter, r *http.Request, shortURL stri
 	_ = json.NewEncoder(w).Encode(response)
 }
 
-func GetMainPage(w http.ResponseWriter, r *http.Request) {
+func (rt *Router) GetMainPage(w http.ResponseWriter, r *http.Request) {
 	ts, err := template.ParseFiles("./web/templates/index.html")
 	if err != nil {
 		log.Println(err.Error())
@@ -127,14 +128,15 @@ func GetMainPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err != ts.Execute(w, nil) {
+	tmplData := struct{ Host string }{Host: rt.host}
+	if err != ts.Execute(w, tmplData) {
 		log.Println(err.Error())
 		http.Error(w, "Internal Server Error", 500)
 		return
 	}
 }
 
-func GetOpenAPI(w http.ResponseWriter, r *http.Request) {
+func (rt *Router) GetOpenAPI(w http.ResponseWriter, r *http.Request) {
 	ts, err := template.ParseFiles("./web/templates/openapi.html")
 	if err != nil {
 		log.Println(err.Error())
@@ -142,7 +144,8 @@ func GetOpenAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err != ts.Execute(w, nil) {
+	tmplData := struct{ Host string }{Host: rt.host}
+	if err != ts.Execute(w, tmplData) {
 		log.Println(err.Error())
 		http.Error(w, "Internal Server Error", 500)
 		return

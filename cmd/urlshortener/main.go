@@ -44,7 +44,7 @@ func main() {
 		log.Fatalf("unknown store value in config: \"%v\"\n", conf.DSN)
 	}
 	app := app.NewApp(store)
-	rt := router.NewRouter(app)
+	rt := router.NewRouter(app, conf.Host)
 	srv := server.NewServer(conf, rt)
 
 	srv.Start()
