@@ -54,8 +54,8 @@ paths:
       responses:
         303:
           description: successful operation
-        400:
-          description: bad request
+        404:
+          description: not found
         500:
           description: internal server error
   /stats/{short-url}:
@@ -78,8 +78,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Stats"
-        400:
-          description: bad request
+        404:
+          description: not found
         500:
           description: internal server error
   
