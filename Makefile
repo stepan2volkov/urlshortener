@@ -1,5 +1,6 @@
 BUILD_COMMIT := $(shell git log --format="%H" -n 1)
 BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%S')
+
 FLAGS = GOOS=linux GOARCH=amd64 CGO_ENABLED=0
 
 PROJECT = github.com/stepan2volkov/urlshortener
@@ -15,7 +16,7 @@ generate:
 	go generate ./...
 
 .PHONY: build
-build:
+build: check
 	mkdir -p build
 	$(FLAGS) go build -a -tags netgo -ldflags="\
 		-w -extldflags '-static'\
