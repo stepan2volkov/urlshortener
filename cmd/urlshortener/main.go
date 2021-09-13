@@ -49,7 +49,7 @@ func main() {
 
 	// Initialization and running application
 	app := app.NewApp(store)
-	rt := router.NewRouter(app, conf.Host)
+	rt := router.NewRouter(app)
 	srv := server.NewServer(conf, rt)
 	srv.Start()
 

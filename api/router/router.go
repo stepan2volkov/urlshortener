@@ -16,12 +16,11 @@ import (
 
 type Router struct {
 	http.Handler
-	app  *app.App
-	host string
+	app *app.App
 }
 
 // NewRouter creates router
-func NewRouter(app *app.App, host string) *Router {
+func NewRouter(app *app.App) *Router {
 	r := chi.NewRouter()
 	rt := &Router{app: app}
 	r.Use(middleware.Logger)
@@ -88,8 +87,8 @@ func (rt *Router) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseURL := &ResponseURL{
-		ShortURL: url.ShortURL,
-		StatsURL: "stats/" + url.ShortURL,
+		ShortURL: "/" + url.ShortURL,
+		StatsURL: "/stats/" + url.ShortURL,
 	}
 	w.Header().Add("Content-type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -129,8 +128,7 @@ func (rt *Router) GetMainPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmplData := struct{ Host string }{Host: rt.host}
-	if err != ts.Execute(w, tmplData) {
+	if err != ts.Execute(w, nil) {
 		log.Println(err.Error())
 		http.Error(w, "Internal Server Error", 500)
 		return
@@ -145,8 +143,7 @@ func (rt *Router) GetOpenAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmplData := struct{ Host string }{Host: rt.host}
-	if err != ts.Execute(w, tmplData) {
+	if err != ts.Execute(w, nil) {
 		log.Println(err.Error())
 		http.Error(w, "Internal Server Error", 500)
 		return

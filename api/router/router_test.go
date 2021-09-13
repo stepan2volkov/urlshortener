@@ -23,7 +23,7 @@ func TestRouter_CreateShortURL(t *testing.T) {
 
 	store := memstore.NewMemStore()
 	app := app.NewApp(store)
-	router := NewRouter(app, "")
+	router := NewRouter(app)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -50,7 +50,7 @@ func TestRouter_RedirectURL(t *testing.T) {
 
 	store := memstore.NewMemStore()
 	app := app.NewApp(store)
-	router := NewRouter(app, "")
+	router := NewRouter(app)
 
 	for i, tt := range tests {
 		if tt.originalURL != "" {
@@ -90,7 +90,7 @@ func TestRouter_GetStats(t *testing.T) {
 
 	store := memstore.NewMemStore()
 	app := app.NewApp(store)
-	router := NewRouter(app, "")
+	router := NewRouter(app)
 
 	for i, tt := range tests {
 		if tt.originalURL != "" {

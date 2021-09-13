@@ -1,6 +1,5 @@
 addr: ':8000'
 dsn: 'postgres://test:1234@localhost:5432/urlshortener'
-host: 'http://localhost:8000/'
 read_timeout: 30
 write_timeout: 30
 read_header_timeout: 30

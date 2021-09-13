@@ -33,13 +33,13 @@
   <body>
     <div id="swagger-ui"></div>
 
-    <script src="{{ .Host }}static/swagger-ui-bundle.js" charset="UTF-8"> </script>
-    <script src="{{ .Host }}static/swagger-ui-standalone-preset.js" charset="UTF-8"> </script>
+    <script src="/static/swagger-ui-bundle.js" charset="UTF-8"> </script>
+    <script src="/static/swagger-ui-standalone-preset.js" charset="UTF-8"> </script>
     <script>
     window.onload = function() {
       // Begin Swagger UI call region
       const ui = SwaggerUIBundle({
-        url: "{{ .Host }}swagger.json",
+        url: "/swagger.json",
         dom_id: '#swagger-ui',
         deepLinking: true,
         presets: [

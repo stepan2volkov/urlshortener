@@ -9,7 +9,6 @@ import (
 
 type Config struct {
 	Addr              string `yaml:"addr"`
-	Host              string `yaml:"host" envconfig:"HOST" default:"https://gb-urlshortener.herokuapp.com/" required:"true"`
 	DSN               string `yaml:"dsn" envconfig:"DSN" default:"memory" required:"true"`
 	ReadTimeout       int    `yaml:"read_timeout" envconfig:"READ_TIMEOUT" default:"30" required:"true"`
 	WriteTimeout      int    `yaml:"write_timeout" envconfig:"WRITE_TIMEOUT" default:"30" required:"true"`
