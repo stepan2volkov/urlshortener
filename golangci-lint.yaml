@@ -13,7 +13,6 @@ linters:
   - govet
   - goconst
   - funlen
-  - bodyclose
   - errcheck
   - deadcode
   - exportloopref

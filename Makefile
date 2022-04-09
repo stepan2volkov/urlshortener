@@ -6,8 +6,11 @@ FLAGS = GOOS=linux GOARCH=amd64 CGO_ENABLED=0
 PROJECT = github.com/stepan2volkov/urlshortener
 CMD:= $(PROJECT)/cmd/urlshortener
 
-check:
-	golangci-lint run -c golangci-lint.yaml
+install-tools:
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.45.2
+
+check: 
+	./bin/golangci-lint run -c golangci-lint.yaml
 
 test:
 	go test ./...

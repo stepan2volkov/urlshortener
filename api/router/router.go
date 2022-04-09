@@ -6,23 +6,36 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/stepan2volkov/urlshortener/api/openapi"
 	"github.com/stepan2volkov/urlshortener/app"
 )
 
+const (
+	namespace    = "urlshortener"
+	labelMethod  = "method"
+	labelHandler = "handler"
+	labelStatus  = "status"
+)
+
 type Router struct {
 	http.Handler
-	app *app.App
+	app              *app.App
+	latencyHistogram *prometheus.HistogramVec
 }
 
 // NewRouter creates router
 func NewRouter(app *app.App) *Router {
 	r := chi.NewRouter()
 	rt := &Router{app: app}
+	rt.init()
 	r.Use(middleware.Logger)
 
 	// Not the part of main API and can be removed (i.e. after creating frontend)
@@ -45,6 +58,7 @@ func NewRouter(app *app.App) *Router {
 		encoder := json.NewEncoder(w)
 		_ = encoder.Encode(swagger)
 	})
+	r.Get("/metrics", promhttp.Handler().ServeHTTP)
 
 	rt.Handler = r
 	return rt
@@ -63,7 +77,20 @@ type Stats struct {
 	NumRedirects int    `json:"numRedirects"`
 }
 
+func (rt *Router) init() {
+	rt.latencyHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: namespace,
+		Name:      "latency",
+		Buckets: []float64{0, 25, 50, 75, 100, 200, 400, 600, 800, 1000, 2000,
+			4000, 6000},
+	}, []string{labelMethod, labelHandler, labelStatus})
+
+	prometheus.MustRegister(rt.latencyHistogram)
+}
+
 func (rt *Router) CreateShortURL(w http.ResponseWriter, r *http.Request) {
+	startedAt := time.Now()
+
 	requestURL := &RequestURL{}
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(requestURL); err != nil {
@@ -75,6 +102,11 @@ func (rt *Router) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	_, err := url.ParseRequestURI(requestURL.OriginalURL)
 	if err != nil {
 		log.Println(err)
+		rt.latencyHistogram.With(prometheus.Labels{
+			labelMethod:  http.MethodPost,
+			labelStatus:  strconv.Itoa(http.StatusBadRequest),
+			labelHandler: "create_short_url",
+		}).Observe(sinceInMilliseconds(startedAt))
 		http.Error(w, "url is invalid", http.StatusBadRequest)
 		return
 	}
@@ -82,6 +114,12 @@ func (rt *Router) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	url, err := rt.app.CreateURL(r.Context(), requestURL.OriginalURL)
 	if err != nil {
 		log.Println(err)
+		rt.latencyHistogram.With(prometheus.Labels{
+			labelMethod:  http.MethodPost,
+			labelStatus:  strconv.Itoa(http.StatusInternalServerError),
+			labelHandler: "create_short_url",
+		}).Observe(sinceInMilliseconds(startedAt))
+
 		http.Error(w, "couldn't create short url", http.StatusInternalServerError)
 		return
 	}
@@ -90,25 +128,54 @@ func (rt *Router) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 		ShortURL: "/" + url.ShortURL,
 		StatsURL: "/stats/" + url.ShortURL,
 	}
+	rt.latencyHistogram.With(prometheus.Labels{
+		labelMethod:  http.MethodPost,
+		labelStatus:  strconv.Itoa(http.StatusCreated),
+		labelHandler: "create_short_url",
+	}).Observe(sinceInMilliseconds(startedAt))
+
 	w.Header().Add("Content-type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(responseURL)
 }
 
 func (rt *Router) RedirectURL(w http.ResponseWriter, r *http.Request, shortURL string) {
+	startedAt := time.Now()
+
 	url, err := rt.app.GetRedirectURL(r.Context(), shortURL)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "not found", http.StatusNotFound)
+
+		rt.latencyHistogram.With(prometheus.Labels{
+			labelMethod:  http.MethodGet,
+			labelStatus:  strconv.Itoa(http.StatusNotFound),
+			labelHandler: "redirect_url",
+		}).Observe(sinceInMilliseconds(startedAt))
+
 		return
 	}
+	rt.latencyHistogram.With(prometheus.Labels{
+		labelMethod:  http.MethodGet,
+		labelStatus:  strconv.Itoa(http.StatusSeeOther),
+		labelHandler: "redirect_url",
+	}).Observe(sinceInMilliseconds(startedAt))
+
 	http.Redirect(w, r, url.OriginalURL, http.StatusSeeOther)
 }
 
 func (rt *Router) GetStats(w http.ResponseWriter, r *http.Request, shortURL string) {
+	startedAt := time.Now()
+
 	stats, err := rt.app.GetStats(r.Context(), shortURL)
 	if err != nil {
 		log.Println(err)
+		rt.latencyHistogram.With(prometheus.Labels{
+			labelMethod:  http.MethodGet,
+			labelStatus:  strconv.Itoa(http.StatusNotFound),
+			labelHandler: "get_stats",
+		}).Observe(sinceInMilliseconds(startedAt))
+
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
@@ -116,6 +183,12 @@ func (rt *Router) GetStats(w http.ResponseWriter, r *http.Request, shortURL stri
 		ShortURL:     stats.ShortURL,
 		NumRedirects: stats.NumRedirects,
 	}
+	rt.latencyHistogram.With(prometheus.Labels{
+		labelMethod:  http.MethodGet,
+		labelStatus:  strconv.Itoa(http.StatusOK),
+		labelHandler: "get_stats",
+	}).Observe(sinceInMilliseconds(startedAt))
+
 	w.Header().Add("Content-type", "application/json")
 	_ = json.NewEncoder(w).Encode(response)
 }
@@ -125,6 +198,7 @@ func (rt *Router) GetMainPage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err.Error())
 		http.Error(w, "Internal Server Error", 500)
+
 		return
 	}
 
@@ -148,4 +222,8 @@ func (rt *Router) GetOpenAPI(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", 500)
 		return
 	}
+}
+
+func sinceInMilliseconds(startTime time.Time) float64 {
+	return float64(time.Since(startTime).Nanoseconds()) / 1e6
 }
