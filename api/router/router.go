@@ -35,7 +35,10 @@ type Router struct {
 func NewRouter(app *app.App) *Router {
 	r := chi.NewRouter()
 	rt := &Router{app: app}
-	rt.init()
+	if err := rt.init(); err != nil {
+		log.Printf("error when init metrics: %v", err)
+	}
+
 	r.Use(middleware.Logger)
 
 	// Not the part of main API and can be removed (i.e. after creating frontend)
@@ -77,7 +80,7 @@ type Stats struct {
 	NumRedirects int    `json:"numRedirects"`
 }
 
-func (rt *Router) init() {
+func (rt *Router) init() error {
 	rt.latencyHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: namespace,
 		Name:      "latency",
@@ -85,7 +88,7 @@ func (rt *Router) init() {
 			4000, 6000},
 	}, []string{labelMethod, labelHandler, labelStatus})
 
-	prometheus.MustRegister(rt.latencyHistogram)
+	return prometheus.Register(rt.latencyHistogram)
 }
 
 func (rt *Router) CreateShortURL(w http.ResponseWriter, r *http.Request) {
