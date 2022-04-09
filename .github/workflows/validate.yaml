@@ -9,7 +9,7 @@ jobs:
   lint:
     runs-on: ubuntu-18.04
     steps:
-      -name: Install Go
+      - name: Install Go
         uses: uses: actions/setup-go@v2
       - name: Checkout code
         uses: actions/checkout@v2
