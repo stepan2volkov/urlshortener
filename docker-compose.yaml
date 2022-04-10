@@ -25,3 +25,28 @@ services:
       - 8000:8000
     depends_on:
       - database
+  
+  prometheus:
+    image: prom/prometheus:latest
+    restart: always
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - 9090:9090
+  
+  grafana:
+    image: grafana/grafana
+    user: "1000"
+    ports:
+      - "3000:3000"
+    volumes:
+      - "./config/grafana/:/etc/grafana/provisioning/"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=password
+      - GF_USERS_ALLOW_SIGN_UP=false
