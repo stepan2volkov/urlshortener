@@ -10,6 +10,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
@@ -30,19 +32,34 @@ type Router struct {
 	app              *app.App
 	latencyHistogram *prometheus.HistogramVec
 	logger           *zap.Logger
+	tracer           opentracing.Tracer
 }
 
 // NewRouter creates router
-func NewRouter(app *app.App, logger *zap.Logger) *Router {
+func NewRouter(app *app.App, logger *zap.Logger, tracer opentracing.Tracer) *Router {
 	r := chi.NewRouter()
-	rt := &Router{app: app}
-	rt.logger = logger
+	rt := &Router{
+		app:    app,
+		logger: logger,
+		tracer: tracer,
+	}
 	if err := rt.init(); err != nil {
 		logger.Fatal("error when initializing metrics",
 			zap.Error(err))
 	}
 
 	r.Use(middleware.Logger)
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			span, ctx := opentracing.StartSpanFromContextWithTracer(r.Context(), rt.tracer, r.URL.Path)
+			defer span.Finish()
+			r = r.WithContext(ctx)
+			span.LogFields(
+				log.String("method", r.Method),
+			)
+			next.ServeHTTP(w, r)
+		})
+	})
 
 	// Not the part of main API and can be removed (i.e. after creating frontend)
 	r.Get("/", rt.GetMainPage)

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/stepan2volkov/urlshortener/app"
 	"github.com/stepan2volkov/urlshortener/db/memstore"
 	"go.uber.org/zap"
@@ -24,8 +25,8 @@ func TestRouter_CreateShortURL(t *testing.T) {
 
 	store := memstore.NewMemStore()
 	logger := zap.NewNop()
-	app := app.NewApp(store, logger)
-	router := NewRouter(app, logger)
+	app := app.NewApp(store, logger, opentracing.NoopTracer{})
+	router := NewRouter(app, logger, opentracing.NoopTracer{})
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -52,8 +53,8 @@ func TestRouter_RedirectURL(t *testing.T) {
 
 	store := memstore.NewMemStore()
 	logger := zap.NewNop()
-	app := app.NewApp(store, logger)
-	router := NewRouter(app, logger)
+	app := app.NewApp(store, logger, opentracing.NoopTracer{})
+	router := NewRouter(app, logger, opentracing.NoopTracer{})
 
 	for i, tt := range tests {
 		if tt.originalURL != "" {
@@ -93,8 +94,8 @@ func TestRouter_GetStats(t *testing.T) {
 
 	store := memstore.NewMemStore()
 	logger := zap.NewNop()
-	app := app.NewApp(store, logger)
-	router := NewRouter(app, logger)
+	app := app.NewApp(store, logger, opentracing.NoopTracer{})
+	router := NewRouter(app, logger, opentracing.NoopTracer{})
 
 	for i, tt := range tests {
 		if tt.originalURL != "" {

@@ -3,10 +3,14 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
 
+	"github.com/opentracing/opentracing-go"
+	jaegerConfig "github.com/uber/jaeger-client-go/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -27,6 +31,9 @@ func main() {
 		zap.String("Build Commit", config.BuildCommit),
 		zap.String("Build Time", config.BuildTime),
 	)
+
+	tracer, closer := getTracer("example", logger)
+	defer closer.Close()
 
 	// Getting configuration
 	flag.StringVar(&configPath, "config", "", "path to config")
@@ -52,8 +59,8 @@ func main() {
 	}
 
 	// Initialization and running application
-	app := app.NewApp(store, logger)
-	rt := router.NewRouter(app, logger)
+	app := app.NewApp(store, logger, tracer)
+	rt := router.NewRouter(app, logger, tracer)
 	srv := server.NewServer(conf, rt, logger)
 	srv.Start()
 
@@ -80,4 +87,37 @@ func getLogger() *zap.Logger {
 	)
 
 	return zap.New(core)
+}
+
+func getTracer(service string, logger *zap.Logger) (opentracing.Tracer, io.Closer) {
+	cfg := &jaegerConfig.Configuration{
+		ServiceName: service,
+		Sampler: &jaegerConfig.SamplerConfig{
+			Type:  "const",
+			Param: 1,
+		},
+		Reporter: &jaegerConfig.ReporterConfig{
+			LogSpans:           true,
+			LocalAgentHostPort: "jaeger:6831",
+		},
+	}
+	tracer, closer, err := cfg.NewTracer(jaegerConfig.Logger(&zapWrapper{logger: logger}))
+	if err != nil {
+		panic(fmt.Sprintf("ERROR: cannot init Jaeger: %v\n", err))
+	}
+	return tracer, closer
+}
+
+type zapWrapper struct {
+	logger *zap.Logger
+}
+
+// Error logs a message at error priority
+func (w *zapWrapper) Error(msg string) {
+	w.logger.Error(msg)
+}
+
+// Infof logs a message at info priority
+func (w *zapWrapper) Infof(msg string, args ...interface{}) {
+	w.logger.Sugar().Infof(msg, args...)
 }
