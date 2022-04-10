@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
 	"go.uber.org/zap"
 
 	"github.com/stepan2volkov/urlshortener/app/base58"
@@ -35,19 +37,31 @@ type URLStore interface {
 type App struct {
 	store  URLStore
 	logger *zap.Logger
+	tracer opentracing.Tracer
 }
 
-func NewApp(store URLStore, logger *zap.Logger) *App {
+func NewApp(store URLStore, logger *zap.Logger, tracer opentracing.Tracer) *App {
 	return &App{
 		store:  store,
 		logger: logger,
+		tracer: tracer,
 	}
 }
 
 // CreateURL generates short URL and saving it in the store.
 func (a *App) CreateURL(ctx context.Context, originalURL string) (*URL, error) {
+	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, a.tracer, "createURL")
+	defer span.Finish()
+
+	span.LogFields(
+		log.String("original_url", originalURL),
+	)
+
 	url, err := a.store.Create(ctx, originalURL)
 	if err != nil {
+		span.LogFields(
+			log.Error(err),
+		)
 		a.logger.Error("error while creating short url",
 			zap.Error(err),
 			zap.String("original_url", originalURL),
@@ -56,6 +70,9 @@ func (a *App) CreateURL(ctx context.Context, originalURL string) (*URL, error) {
 	}
 	shortURL, err := base58.Decode(url.ID)
 	if err != nil {
+		span.LogFields(
+			log.Error(err),
+		)
 		a.logger.Error("error while generating short url",
 			zap.Error(err),
 			zap.String("original_url", originalURL),
@@ -63,8 +80,14 @@ func (a *App) CreateURL(ctx context.Context, originalURL string) (*URL, error) {
 		return nil, fmt.Errorf("error when generating short URL: %w", err)
 	}
 	url.ShortURL = shortURL
+	span.LogFields(
+		log.String("short_url", shortURL),
+	)
 
 	if err = a.store.UpdateURL(ctx, url); err != nil {
+		span.LogFields(
+			log.Error(err),
+		)
 		a.logger.Error("error when updating url",
 			zap.Error(err),
 			zap.String("original_url", originalURL),
