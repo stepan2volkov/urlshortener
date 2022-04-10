@@ -2,20 +2,23 @@ package server
 
 import (
 	"context"
-	"log"
+	"errors"
 	"net/http"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/stepan2volkov/urlshortener/app/config"
 )
 
 type Server struct {
-	srv http.Server
+	srv    http.Server
+	logger *zap.Logger
 }
 
 // NewServer creates http.Server with settings from config.Config
-func NewServer(conf config.Config, h http.Handler) *Server {
-	s := &Server{}
+func NewServer(conf config.Config, h http.Handler, logger *zap.Logger) *Server {
+	s := &Server{logger: logger}
 	s.srv = http.Server{
 		Addr:              conf.Addr,
 		Handler:           h,
@@ -29,7 +32,12 @@ func NewServer(conf config.Config, h http.Handler) *Server {
 func (s *Server) Start() {
 	go func() {
 		if err := s.srv.ListenAndServe(); err != nil {
-			log.Println(err)
+			if errors.Is(err, http.ErrServerClosed) {
+				s.logger.Info("server was stopped")
+			} else {
+				s.logger.Error("server was stopped abnormally", zap.Error(err))
+			}
+
 		}
 	}()
 }
@@ -37,7 +45,7 @@ func (s *Server) Start() {
 func (s *Server) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	if err := s.srv.Shutdown(ctx); err != nil {
-		log.Println(err)
+		s.logger.Error("error while stopping server", zap.Error(err))
 	}
 	cancel()
 }

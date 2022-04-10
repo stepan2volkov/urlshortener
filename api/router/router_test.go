@@ -9,6 +9,7 @@ import (
 
 	"github.com/stepan2volkov/urlshortener/app"
 	"github.com/stepan2volkov/urlshortener/db/memstore"
+	"go.uber.org/zap"
 )
 
 func TestRouter_CreateShortURL(t *testing.T) {
@@ -22,8 +23,9 @@ func TestRouter_CreateShortURL(t *testing.T) {
 	}
 
 	store := memstore.NewMemStore()
-	app := app.NewApp(store)
-	router := NewRouter(app)
+	logger := zap.NewNop()
+	app := app.NewApp(store, logger)
+	router := NewRouter(app, logger)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -49,8 +51,9 @@ func TestRouter_RedirectURL(t *testing.T) {
 	}
 
 	store := memstore.NewMemStore()
-	app := app.NewApp(store)
-	router := NewRouter(app)
+	logger := zap.NewNop()
+	app := app.NewApp(store, logger)
+	router := NewRouter(app, logger)
 
 	for i, tt := range tests {
 		if tt.originalURL != "" {
@@ -89,8 +92,9 @@ func TestRouter_GetStats(t *testing.T) {
 	}
 
 	store := memstore.NewMemStore()
-	app := app.NewApp(store)
-	router := NewRouter(app)
+	logger := zap.NewNop()
+	app := app.NewApp(store, logger)
+	router := NewRouter(app, logger)
 
 	for i, tt := range tests {
 		if tt.originalURL != "" {

@@ -5,7 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
+
+	"go.uber.org/zap"
 
 	"github.com/stepan2volkov/urlshortener/app/base58"
 )
@@ -32,12 +33,14 @@ type URLStore interface {
 }
 
 type App struct {
-	store URLStore
+	store  URLStore
+	logger *zap.Logger
 }
 
-func NewApp(store URLStore) *App {
+func NewApp(store URLStore, logger *zap.Logger) *App {
 	return &App{
-		store: store,
+		store:  store,
+		logger: logger,
 	}
 }
 
@@ -45,17 +48,34 @@ func NewApp(store URLStore) *App {
 func (a *App) CreateURL(ctx context.Context, originalURL string) (*URL, error) {
 	url, err := a.store.Create(ctx, originalURL)
 	if err != nil {
+		a.logger.Error("error while creating short url",
+			zap.Error(err),
+			zap.String("original_url", originalURL),
+		)
 		return nil, fmt.Errorf("error when creating: %w", err)
 	}
 	shortURL, err := base58.Decode(url.ID)
 	if err != nil {
+		a.logger.Error("error while generating short url",
+			zap.Error(err),
+			zap.String("original_url", originalURL),
+		)
 		return nil, fmt.Errorf("error when generating short URL: %w", err)
 	}
 	url.ShortURL = shortURL
 
 	if err = a.store.UpdateURL(ctx, url); err != nil {
+		a.logger.Error("error when updating url",
+			zap.Error(err),
+			zap.String("original_url", originalURL),
+			zap.String("short_url", shortURL),
+		)
 		return nil, fmt.Errorf("error when saving URL in db: %w", err)
 	}
+	a.logger.Info("short url created",
+		zap.String("original_url", originalURL),
+		zap.String("short_url", shortURL),
+	)
 	return url, nil
 }
 
@@ -67,7 +87,7 @@ func (a *App) GetRedirectURL(ctx context.Context, shortURL string) (*URL, error)
 		case sql.ErrNoRows:
 			return nil, errors.New("URL not found")
 		default:
-			return nil, fmt.Errorf("error when getting url: %w\n", err)
+			return nil, fmt.Errorf("error when getting url: %w", err)
 		}
 	}
 	a.increaseNumRedirects(ctx, shortURL)
@@ -92,6 +112,8 @@ func (a *App) GetStats(ctx context.Context, shortURL string) (*Stats, error) {
 func (a *App) increaseNumRedirects(ctx context.Context, shortURL string) {
 	err := a.store.IncreaseNumRedirects(ctx, shortURL)
 	if err != nil {
-		log.Println(err)
+		a.logger.Error("error when trying increase num redirects",
+			zap.String("short_url", shortURL),
+		)
 	}
 }
