@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 	"os"
 	"os/signal"
 	"strings"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/stepan2volkov/urlshortener/api/router"
 	"github.com/stepan2volkov/urlshortener/api/server"
@@ -19,18 +21,20 @@ import (
 var configPath string
 
 func main() {
+	logger := getLogger()
 	// Information about current build
-	log.Println("Build Commit:", config.BuildCommit)
-	log.Println("Build Time:", config.BuildTime)
+	logger.Info("app started",
+		zap.String("Build Commit", config.BuildCommit),
+		zap.String("Build Time", config.BuildTime),
+	)
 
 	// Getting configuration
 	flag.StringVar(&configPath, "config", "", "path to config")
 	flag.Parse()
 	conf, err := config.GetConfig(configPath)
 	if err != nil {
-		log.Fatalf("error parsing config: %v\n", err)
+		logger.Fatal("error when parsing config", zap.Error(err))
 	}
-	log.Printf("Config: %+v\n", conf)
 
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt)
 
@@ -41,18 +45,39 @@ func main() {
 	case strings.HasPrefix(conf.DSN, "postgres://"):
 		store, err = pgstore.NewPgStore(conf.DSN)
 		if err != nil {
-			log.Fatalln(err)
+			logger.Fatal("error when init pg storage", zap.Error(err))
 		}
 	default:
-		log.Fatalf("unknown store value in config: \"%v\"\n", conf.DSN)
+		logger.Fatal("unknown store value in config", zap.String("dsn", conf.DSN))
 	}
 
 	// Initialization and running application
-	app := app.NewApp(store)
-	rt := router.NewRouter(app)
-	srv := server.NewServer(conf, rt)
+	app := app.NewApp(store, logger)
+	rt := router.NewRouter(app, logger)
+	srv := server.NewServer(conf, rt, logger)
 	srv.Start()
 
 	<-ctx.Done()
 	srv.Stop()
+}
+
+func getLogger() *zap.Logger {
+	priority := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+		return lvl <= zapcore.ErrorLevel
+	})
+	encoder := zapcore.NewJSONEncoder(zapcore.EncoderConfig{
+		MessageKey:  "message",
+		LevelKey:    "level",
+		TimeKey:     "timestamp",
+		EncodeLevel: zapcore.LowercaseLevelEncoder,
+		EncodeTime:  zapcore.ISO8601TimeEncoder,
+	})
+
+	sync := zapcore.AddSync(os.Stdout)
+
+	core := zapcore.NewTee(
+		zapcore.NewCore(encoder, sync, priority),
+	)
+
+	return zap.New(core)
 }

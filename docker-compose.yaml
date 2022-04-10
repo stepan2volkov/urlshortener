@@ -15,6 +15,12 @@ services:
       context: .
     image: stepan2volkov/urlshortener:v1.0.0
     restart: always
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-async-connect: "true"
+        fluentd-address: localhost:24224
+        tag: fluentd
     environment:
       PORT: 8000
       DSN: 'postgres://test:1234@database:5432/urlshortener'
@@ -25,28 +31,63 @@ services:
       - 8000:8000
     depends_on:
       - database
+      - fluentd
   
-  prometheus:
-    image: prom/prometheus:latest
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   restart: always
+  #   volumes:
+  #     - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #     - '--storage.tsdb.path=/prometheus'
+  #     - '--web.console.libraries=/etc/prometheus/console_libraries'
+  #     - '--web.console.templates=/etc/prometheus/consoles'
+  #     - '--web.enable-lifecycle'
+  #   ports:
+  #     - 9090:9090
+  
+  # grafana:
+  #   image: grafana/grafana
+  #   user: "1000"
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - "./config/grafana/:/etc/grafana/provisioning/"
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=password
+  #     - GF_USERS_ALLOW_SIGN_UP=false
+
+  fluentd:
+    build: ./config/fluentd
     restart: always
+    container_name: fluentd
     volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
+      - ./config/fluentd/conf:/fluentd/etc
     ports:
-      - 9090:9090
-  
-  grafana:
-    image: grafana/grafana
-    user: "1000"
-    ports:
-      - "3000:3000"
-    volumes:
-      - "./config/grafana/:/etc/grafana/provisioning/"
+      - "24224:24224"
+      - "24224:24224/udp"
+
+  elasticsearch:
+    image: elasticsearch:7.9.2
+    container_name: elasticsearch
+    restart: always
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=password
-      - GF_USERS_ALLOW_SIGN_UP=false
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    volumes:
+      - ./build/elasticsearch:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+
+  kibana:
+    image: kibana:7.9.2
+    container_name: kibana
+    restart: always
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    volumes:
+      - ./config/kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml
+    ports:
+      - "5601:5601"

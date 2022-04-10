@@ -3,7 +3,6 @@ package router
 import (
 	"encoding/json"
 	"html/template"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -13,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
 
 	"github.com/stepan2volkov/urlshortener/api/openapi"
 	"github.com/stepan2volkov/urlshortener/app"
@@ -29,14 +29,17 @@ type Router struct {
 	http.Handler
 	app              *app.App
 	latencyHistogram *prometheus.HistogramVec
+	logger           *zap.Logger
 }
 
 // NewRouter creates router
-func NewRouter(app *app.App) *Router {
+func NewRouter(app *app.App, logger *zap.Logger) *Router {
 	r := chi.NewRouter()
 	rt := &Router{app: app}
+	rt.logger = logger
 	if err := rt.init(); err != nil {
-		log.Printf("error when init metrics: %v", err)
+		logger.Fatal("error when initializing metrics",
+			zap.Error(err))
 	}
 
 	r.Use(middleware.Logger)
@@ -46,7 +49,7 @@ func NewRouter(app *app.App) *Router {
 	r.Get("/openapi", rt.GetOpenAPI)
 	fileServer := http.FileServer(http.Dir("./web/static"))
 	r.Get("/static/{filename}", func(w http.ResponseWriter, r *http.Request) {
-		log.Println(r.RequestURI)
+		rt.logger.Debug("file was requested", zap.String("url", r.RequestURI))
 		http.StripPrefix("/static", fileServer).ServeHTTP(w, r)
 	})
 
@@ -55,7 +58,8 @@ func NewRouter(app *app.App) *Router {
 
 	swagger, err := openapi.GetSwagger()
 	if err != nil {
-		log.Fatalf("Swagger error: %v\n", err)
+		logger.Fatal("error when getting swagger",
+			zap.Error(err))
 	}
 	r.Get("/swagger.json", func(w http.ResponseWriter, r *http.Request) {
 		encoder := json.NewEncoder(w)
@@ -97,14 +101,16 @@ func (rt *Router) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	requestURL := &RequestURL{}
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(requestURL); err != nil {
-		log.Println(err)
+		rt.logger.Info("error when encoding request body",
+			zap.Error(err))
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
 	_, err := url.ParseRequestURI(requestURL.OriginalURL)
 	if err != nil {
-		log.Println(err)
+		rt.logger.Info("error when parse url",
+			zap.Error(err))
 		rt.latencyHistogram.With(prometheus.Labels{
 			labelMethod:  http.MethodPost,
 			labelStatus:  strconv.Itoa(http.StatusBadRequest),
@@ -116,7 +122,8 @@ func (rt *Router) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 
 	url, err := rt.app.CreateURL(r.Context(), requestURL.OriginalURL)
 	if err != nil {
-		log.Println(err)
+		rt.logger.Error("error when creating url",
+			zap.Error(err))
 		rt.latencyHistogram.With(prometheus.Labels{
 			labelMethod:  http.MethodPost,
 			labelStatus:  strconv.Itoa(http.StatusInternalServerError),
@@ -147,7 +154,9 @@ func (rt *Router) RedirectURL(w http.ResponseWriter, r *http.Request, shortURL s
 
 	url, err := rt.app.GetRedirectURL(r.Context(), shortURL)
 	if err != nil {
-		log.Println(err)
+		rt.logger.Info("error when getting redirect url",
+			zap.Error(err),
+			zap.String("short_url", shortURL))
 		http.Error(w, "not found", http.StatusNotFound)
 
 		rt.latencyHistogram.With(prometheus.Labels{
@@ -172,7 +181,9 @@ func (rt *Router) GetStats(w http.ResponseWriter, r *http.Request, shortURL stri
 
 	stats, err := rt.app.GetStats(r.Context(), shortURL)
 	if err != nil {
-		log.Println(err)
+		rt.logger.Error("error when getting stas",
+			zap.Error(err),
+			zap.String("short_url", shortURL))
 		rt.latencyHistogram.With(prometheus.Labels{
 			labelMethod:  http.MethodGet,
 			labelStatus:  strconv.Itoa(http.StatusNotFound),
@@ -199,14 +210,16 @@ func (rt *Router) GetStats(w http.ResponseWriter, r *http.Request, shortURL stri
 func (rt *Router) GetMainPage(w http.ResponseWriter, r *http.Request) {
 	ts, err := template.ParseFiles("./web/templates/index.html")
 	if err != nil {
-		log.Println(err.Error())
+		rt.logger.Warn("error when getting main page",
+			zap.Error(err))
 		http.Error(w, "Internal Server Error", 500)
 
 		return
 	}
 
 	if err != ts.Execute(w, nil) {
-		log.Println(err.Error())
+		rt.logger.Warn("error when processing template for main-page",
+			zap.Error(err))
 		http.Error(w, "Internal Server Error", 500)
 		return
 	}
@@ -215,13 +228,15 @@ func (rt *Router) GetMainPage(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) GetOpenAPI(w http.ResponseWriter, r *http.Request) {
 	ts, err := template.ParseFiles("./web/templates/openapi.html")
 	if err != nil {
-		log.Println(err.Error())
+		rt.logger.Warn("error when getting swagger page",
+			zap.Error(err))
 		http.Error(w, "Internal Server Error", 500)
 		return
 	}
 
 	if err != ts.Execute(w, nil) {
-		log.Println(err.Error())
+		rt.logger.Warn("error when processing template for swagger",
+			zap.Error(err))
 		http.Error(w, "Internal Server Error", 500)
 		return
 	}
